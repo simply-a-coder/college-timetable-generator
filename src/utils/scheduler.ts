@@ -1,16 +1,10 @@
 
-import { Section, Teacher, Course, GroupClass, Assignment, Rules, TimetableEntry, TIME_SLOTS, DAYS } from '@/types';
+import { Section, Teacher, Course, GroupClass, Assignment, Rules, TimetableEntry, TIME_SLOTS, DAYS, Classroom } from '@/types';
 
 interface Slot {
   day: string;
   time: string;
   index: number;
-}
-
-interface Room {
-  id: string;
-  type: 'lecture_hall' | 'computer_lab';
-  capacity: number;
 }
 
 interface ScheduleSession {
@@ -31,7 +25,7 @@ export class TimetableScheduler {
   private assignments: Assignment[] = [];
   private rules: Rules;
   private slots: Slot[] = [];
-  private rooms: Room[] = [];
+  private classrooms: Classroom[] = [];
   private schedule: Map<string, TimetableEntry> = new Map();
 
   constructor(
@@ -40,7 +34,8 @@ export class TimetableScheduler {
     courses: Course[],
     groups: GroupClass[],
     assignments: Assignment[],
-    rules: Rules
+    rules: Rules,
+    classrooms: Classroom[]
   ) {
     this.sections = sections;
     this.teachers = teachers;
@@ -48,9 +43,9 @@ export class TimetableScheduler {
     this.groups = groups;
     this.assignments = assignments;
     this.rules = rules;
+    this.classrooms = classrooms;
     
     this.initializeSlots();
-    this.initializeRooms();
   }
 
   private initializeSlots() {
@@ -68,18 +63,6 @@ export class TimetableScheduler {
     });
   }
 
-  private initializeRooms() {
-    // Generate mock rooms - in real implementation, this would come from database
-    this.rooms = [
-      { id: 'LH-101', type: 'lecture_hall', capacity: 100 },
-      { id: 'LH-102', type: 'lecture_hall', capacity: 80 },
-      { id: 'LH-103', type: 'lecture_hall', capacity: 120 },
-      { id: 'LAB-201', type: 'computer_lab', capacity: 40 },
-      { id: 'LAB-202', type: 'computer_lab', capacity: 40 },
-      { id: 'LAB-203', type: 'computer_lab', capacity: 50 }
-    ];
-  }
-
   private getSlotKey(sectionId: string, day: string, time: string): string {
     return `${sectionId}-${day}-${time}`;
   }
@@ -92,7 +75,7 @@ export class TimetableScheduler {
     return `${teacherId}-${day}-${time}`;
   }
 
-  private isSlotAvailable(sectionId: string, teacherId: string, slot: Slot, duration: number, roomType: 'lecture_hall' | 'computer_lab'): { available: boolean; room?: Room } {
+  private isSlotAvailable(sectionId: string, teacherId: string, slot: Slot, duration: number, roomType: 'lecture_hall' | 'computer_lab'): { available: boolean; classroom?: Classroom } {
     // Check if slot conflicts with section's lecture timing restrictions
     const section = this.sections.find(s => s.id === sectionId);
     if (section && section.lecture_timings) {
@@ -136,9 +119,12 @@ export class TimetableScheduler {
       }
     }
 
-    // Find available room
-    const availableRoom = this.rooms.find(room => {
-      if (room.type !== roomType) return false;
+    // Find available classroom
+    const availableClassroom = this.classrooms.find(classroom => {
+      if (classroom.type !== roomType) return false;
+      
+      // Check capacity for section
+      if (section && classroom.capacity < section.student_count) return false;
       
       for (let i = 0; i < duration; i++) {
         const currentSlotIndex = slot.index + i;
@@ -146,7 +132,7 @@ export class TimetableScheduler {
         
         if (!currentSlot) return false;
         
-        const roomKey = this.getRoomKey(room.id, currentSlot.day, currentSlot.time);
+        const roomKey = this.getRoomKey(classroom.id, currentSlot.day, currentSlot.time);
         const roomConflict = Array.from(this.schedule.values()).find(entry => 
           this.getRoomKey(entry.room, entry.day, entry.time) === roomKey
         );
@@ -157,7 +143,7 @@ export class TimetableScheduler {
       return true;
     });
 
-    return { available: !!availableRoom, room: availableRoom };
+    return { available: !!availableClassroom, classroom: availableClassroom };
   }
 
   private isWithinLectureTimings(timeSlot: string, lecture_timings: string, roomType: 'lecture_hall' | 'computer_lab'): boolean {
@@ -242,7 +228,7 @@ export class TimetableScheduler {
         session.roomType
       );
 
-      if (availability.available && availability.room) {
+      if (availability.available && availability.classroom) {
         // Schedule the session
         for (let i = 0; i < session.duration; i++) {
           const currentSlotIndex = slot.index + i;
@@ -259,7 +245,7 @@ export class TimetableScheduler {
               teacher: teacher?.name || 'Unknown Teacher',
               course: course ? `${course.code} - ${course.name}` : 'Unknown Course',
               slot: currentSlot.time,
-              room: availability.room.id,
+              room: availability.classroom.name,
               day: currentSlot.day,
               time: currentSlot.time
             };
@@ -314,8 +300,9 @@ export async function generateTimetable(
   courses: Course[],
   groups: GroupClass[],
   assignments: Assignment[],
-  rules: Rules
+  rules: Rules,
+  classrooms: Classroom[]
 ): Promise<TimetableEntry[]> {
-  const scheduler = new TimetableScheduler(sections, teachers, courses, groups, assignments, rules);
+  const scheduler = new TimetableScheduler(sections, teachers, courses, groups, assignments, rules, classrooms);
   return await scheduler.generateTimetable();
 }
