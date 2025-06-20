@@ -1,16 +1,16 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Settings, Clock, MapPin, Calendar } from 'lucide-react';
-import { Rules, TIME_SLOTS } from '@/types';
+import { Settings, Clock, MapPin, Calendar, Users } from 'lucide-react';
+import { Rules, TIME_SLOTS, Section } from '@/types';
 import { toast } from '@/hooks/use-toast';
 
 const RulesPage: React.FC = () => {
+  const [sections, setSections] = useState<Section[]>([]);
   const [rules, setRules] = useState<Rules>({
     id: '1',
     lunchStartSlot: '12:05-12:55',
@@ -18,11 +18,49 @@ const RulesPage: React.FC = () => {
     travelGapMinutes: 10,
     maxLecturesPerDay: 6,
     maxLabsPerDay: 3,
-    allowedSlots: TIME_SLOTS
+    allowedSlots: TIME_SLOTS,
+    sectionBreakRules: {}
   });
+
+  useEffect(() => {
+    const savedSections = localStorage.getItem('sections');
+    const savedRules = localStorage.getItem('rules');
+    
+    if (savedSections) {
+      const sectionsData = JSON.parse(savedSections);
+      setSections(sectionsData);
+      
+      // Initialize break rules for new sections
+      if (savedRules) {
+        const rulesData = JSON.parse(savedRules);
+        const newBreakRules = { ...rulesData.sectionBreakRules };
+        
+        sectionsData.forEach((section: Section) => {
+          if (!newBreakRules[section.id]) {
+            newBreakRules[section.id] = { hasBreak: true, breakSlot: '12:05-12:55' };
+          }
+        });
+        
+        setRules({ ...rulesData, sectionBreakRules: newBreakRules });
+      }
+    }
+  }, []);
 
   const updateRule = (field: keyof Rules, value: any) => {
     setRules(prev => ({ ...prev, [field]: value }));
+  };
+
+  const updateSectionBreakRule = (sectionId: string, field: 'hasBreak' | 'breakSlot', value: any) => {
+    setRules(prev => ({
+      ...prev,
+      sectionBreakRules: {
+        ...prev.sectionBreakRules,
+        [sectionId]: {
+          ...prev.sectionBreakRules[sectionId],
+          [field]: value
+        }
+      }
+    }));
   };
 
   const handleSlotToggle = (slot: string, checked: boolean) => {
@@ -63,7 +101,7 @@ const RulesPage: React.FC = () => {
     <div className="space-y-8">
       <div className="text-center">
         <h2 className="text-3xl font-bold text-slate-800 mb-4">Rules & Constraints</h2>
-        <p className="text-slate-600">Configure global scheduling rules and constraints</p>
+        <p className="text-slate-600">Configure global scheduling rules and section-specific break times</p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -71,7 +109,7 @@ const RulesPage: React.FC = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Clock className="w-5 h-5 text-blue-600" />
-              Lunch Break Settings
+              Default Lunch Break Settings
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -162,6 +200,60 @@ const RulesPage: React.FC = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Section-specific break rules */}
+      {sections.length > 0 && (
+        <Card className="animate-scale-in">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="w-5 h-5 text-orange-600" />
+              Section-Specific Break Rules
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {sections.map(section => (
+                <div key={section.id} className="p-4 border rounded-lg bg-slate-50">
+                  <h4 className="font-medium text-slate-800 mb-3">Section {section.code}</h4>
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`break-${section.id}`}
+                        checked={rules.sectionBreakRules[section.id]?.hasBreak !== false}
+                        onCheckedChange={(checked) => updateSectionBreakRule(section.id, 'hasBreak', checked)}
+                      />
+                      <label htmlFor={`break-${section.id}`} className="text-sm">
+                        Has Break Time
+                      </label>
+                    </div>
+                    
+                    {rules.sectionBreakRules[section.id]?.hasBreak !== false && (
+                      <div>
+                        <Label className="text-xs">Break Time</Label>
+                        <Select 
+                          value={rules.sectionBreakRules[section.id]?.breakSlot || '12:05-12:55'}
+                          onValueChange={(value) => updateSectionBreakRule(section.id, 'breakSlot', value)}
+                        >
+                          <SelectTrigger className="mt-1 h-8 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {TIME_SLOTS.map(slot => (
+                              <SelectItem key={slot} value={slot} className="text-xs">
+                                {slot}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="animate-scale-in">
         <CardHeader>

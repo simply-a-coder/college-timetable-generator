@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Trash2, Users } from 'lucide-react';
 import { Section } from '@/types';
 import { toast } from '@/hooks/use-toast';
@@ -11,8 +12,14 @@ import { toast } from '@/hooks/use-toast';
 const Sections: React.FC = () => {
   const [numberOfSections, setNumberOfSections] = useState<number>(1);
   const [sections, setSections] = useState<Section[]>([
-    { id: '1', code: 'A1', studentCount: 30 }
+    { id: '1', code: 'A1', studentCount: 30, lectureTimings: '8-1' }
   ]);
+
+  const timingOptions = [
+    { value: '8-1', label: '8:00 AM - 1:00 PM' },
+    { value: '10-4', label: '10:00 AM - 4:00 PM' },
+    { value: '1-4', label: '1:00 PM - 4:00 PM' }
+  ];
 
   const handleNumberChange = (value: number) => {
     if (value < 1) return;
@@ -25,7 +32,8 @@ const Sections: React.FC = () => {
         newSections.push({
           id: String(i + 1),
           code: `A${i + 1}`,
-          studentCount: 30
+          studentCount: 30,
+          lectureTimings: '8-1'
         });
       }
       setSections(newSections);
@@ -70,7 +78,7 @@ const Sections: React.FC = () => {
     <div className="space-y-8">
       <div className="text-center">
         <h2 className="text-3xl font-bold text-slate-800 mb-4">Section Configuration</h2>
-        <p className="text-slate-600">Define your academic sections and student counts</p>
+        <p className="text-slate-600">Define your academic sections, student counts, and lecture timings</p>
       </div>
 
       <Card className="mx-auto max-w-md animate-scale-in">
@@ -122,6 +130,24 @@ const Sections: React.FC = () => {
                   onChange={(e) => updateSection(section.id, 'studentCount', parseInt(e.target.value) || 0)}
                   className="mt-1"
                 />
+              </div>
+              <div>
+                <Label>Lecture Timings</Label>
+                <Select 
+                  value={section.lectureTimings} 
+                  onValueChange={(value) => updateSection(section.id, 'lectureTimings', value)}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select timing" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {timingOptions.map(option => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </CardContent>
           </Card>

@@ -1,65 +1,79 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Calendar, Download, FileText, Users, BookOpen, Building, Sparkles } from 'lucide-react';
 import LoadingSpinner from '@/components/ui/loading-spinner';
-import { TimetableEntry, DAYS, TIME_SLOTS } from '@/types';
+import { TimetableEntry, DAYS, TIME_SLOTS, Section, Teacher, Course, GroupClass, Assignment, Rules } from '@/types';
 import { toast } from '@/hooks/use-toast';
+import { generateTimetable } from '@/utils/scheduler';
 
 const Generate: React.FC = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [timetable, setTimetable] = useState<TimetableEntry[]>([]);
   const [selectedTab, setSelectedTab] = useState('sections');
 
-  const generateTimetable = async () => {
+  const generateTimetableHandler = async () => {
     setIsGenerating(true);
     
     try {
-      // Simulate AI generation process
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      // Load all data from localStorage
+      const sectionsData = localStorage.getItem('sections');
+      const teachersData = localStorage.getItem('teachers');
+      const coursesData = localStorage.getItem('courses');
+      const groupsData = localStorage.getItem('groups');
+      const assignmentsData = localStorage.getItem('assignments');
+      const rulesData = localStorage.getItem('rules');
+
+      if (!sectionsData || !teachersData || !coursesData || !assignmentsData) {
+        toast({
+          title: "Missing Data",
+          description: "Please ensure all required data (sections, teachers, courses, assignments) is configured.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const sections: Section[] = JSON.parse(sectionsData);
+      const teachers: Teacher[] = JSON.parse(teachersData);
+      const courses: Course[] = JSON.parse(coursesData);
+      const groups: GroupClass[] = groupsData ? JSON.parse(groupsData) : [];
+      const assignments: Assignment[] = JSON.parse(assignmentsData);
+      const rules: Rules = rulesData ? JSON.parse(rulesData) : {
+        id: '1',
+        lunchStartSlot: '12:05-12:55',
+        lunchEndSlot: '13:05-13:55',
+        travelGapMinutes: 10,
+        maxLecturesPerDay: 6,
+        maxLabsPerDay: 3,
+        allowedSlots: TIME_SLOTS,
+        sectionBreakRules: {}
+      };
+
+      console.log('Generating timetable with data:', {
+        sections: sections.length,
+        teachers: teachers.length,
+        courses: courses.length,
+        groups: groups.length,
+        assignments: assignments.length
+      });
+
+      const result = await generateTimetable(sections, teachers, courses, groups, assignments, rules);
       
-      // Mock timetable data - in real implementation, this would call the backend API
-      const mockTimetable: TimetableEntry[] = [
-        {
-          section: 'A1',
-          teacher: 'Dr. Smith',
-          course: 'CS101 - Programming',
-          slot: '9:05-9:55',
-          room: 'Room 101',
-          day: 'Monday',
-          time: '9:05-9:55'
-        },
-        {
-          section: 'A1',
-          teacher: 'Prof. Johnson',
-          course: 'MATH201 - Calculus',
-          slot: '10:05-10:55',
-          room: 'Room 102',
-          day: 'Monday',
-          time: '10:05-10:55'
-        },
-        {
-          section: 'A2',
-          teacher: 'Dr. Wilson',
-          course: 'PHY101 - Physics',
-          slot: '9:05-9:55',
-          room: 'Lab 201',
-          day: 'Tuesday',
-          time: '9:05-9:55'
-        }
-      ];
+      setTimetable(result);
       
-      setTimetable(mockTimetable);
+      // Save the generated timetable
+      localStorage.setItem('generatedTimetable', JSON.stringify(result));
+      
       toast({
         title: "Success!",
-        description: "Timetable generated successfully with optimal scheduling.",
+        description: `Timetable generated successfully with ${result.length} scheduled sessions.`,
       });
     } catch (error) {
+      console.error('Timetable generation error:', error);
       toast({
         title: "Generation Failed",
-        description: "Failed to generate timetable. Please check your configurations.",
+        description: "Failed to generate timetable. Please check your configurations and try again.",
         variant: "destructive"
       });
     } finally {
@@ -181,7 +195,7 @@ const Generate: React.FC = () => {
     <div className="space-y-8">
       <div className="text-center">
         <h2 className="text-3xl font-bold text-slate-800 mb-4">Generate Timetable</h2>
-        <p className="text-slate-600">Create optimized schedules using AI-powered constraint solving</p>
+        <p className="text-slate-600">Create optimized schedules using custom constraint solving algorithms</p>
       </div>
 
       {!timetable.length ? (
@@ -198,7 +212,7 @@ const Generate: React.FC = () => {
               to ensure optimal scheduling while respecting all rules and preferences.
             </p>
             <Button 
-              onClick={generateTimetable}
+              onClick={generateTimetableHandler}
               disabled={isGenerating}
               size="lg"
               className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"

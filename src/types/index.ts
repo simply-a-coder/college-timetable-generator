@@ -3,6 +3,7 @@ export interface Section {
   id: string;
   code: string;
   studentCount: number;
+  lectureTimings: string;
 }
 
 export interface Teacher {
@@ -37,7 +38,7 @@ export interface Assignment {
   id: string;
   teacherId: string;
   courseId: string;
-  sectionOrGroupId: string;
+  sectionOrGroupIds: string[];
   type: 'section' | 'group';
 }
 
@@ -49,6 +50,7 @@ export interface Rules {
   maxLecturesPerDay: number;
   maxLabsPerDay: number;
   allowedSlots: string[];
+  sectionBreakRules: { [sectionId: string]: { hasBreak: boolean; breakSlot?: string } };
 }
 
 export interface TimetableEntry {
