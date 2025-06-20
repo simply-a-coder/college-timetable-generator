@@ -200,7 +200,7 @@ export class TimetableScheduler {
               teacherId: assignment.teacher_id,
               courseId: assignment.course_id,
               duration: course.number_of_hours,
-              roomType: course.room_type,
+              roomType: course.room_type as 'lecture_hall' | 'computer_lab',
               isGroupClass: true,
               groupSections: group.sections
             });
@@ -212,7 +212,7 @@ export class TimetableScheduler {
               teacherId: assignment.teacher_id,
               courseId: assignment.course_id,
               duration: course.number_of_hours,
-              roomType: course.room_type
+              roomType: course.room_type as 'lecture_hall' | 'computer_lab'
             });
           }
         }
