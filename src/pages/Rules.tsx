@@ -1,0 +1,236 @@
+
+import React, { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Settings, Clock, MapPin, Calendar } from 'lucide-react';
+import { Rules, TIME_SLOTS } from '@/types';
+import { toast } from '@/hooks/use-toast';
+
+const RulesPage: React.FC = () => {
+  const [rules, setRules] = useState<Rules>({
+    id: '1',
+    lunchStartSlot: '12:05-12:55',
+    lunchEndSlot: '13:05-13:55',
+    travelGapMinutes: 10,
+    maxLecturesPerDay: 6,
+    maxLabsPerDay: 3,
+    allowedSlots: TIME_SLOTS
+  });
+
+  const updateRule = (field: keyof Rules, value: any) => {
+    setRules(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleSlotToggle = (slot: string, checked: boolean) => {
+    setRules(prev => ({
+      ...prev,
+      allowedSlots: checked 
+        ? [...prev.allowedSlots, slot]
+        : prev.allowedSlots.filter(s => s !== slot)
+    }));
+  };
+
+  const handleSave = () => {
+    if (rules.allowedSlots.length === 0) {
+      toast({
+        title: "Validation Error",
+        description: "At least one time slot must be allowed.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    localStorage.setItem('rules', JSON.stringify(rules));
+    toast({
+      title: "Success",
+      description: "Rules saved successfully!",
+    });
+  };
+
+  const isSlotInLunchWindow = (slot: string) => {
+    const lunchStart = TIME_SLOTS.indexOf(rules.lunchStartSlot);
+    const lunchEnd = TIME_SLOTS.indexOf(rules.lunchEndSlot);
+    const slotIndex = TIME_SLOTS.indexOf(slot);
+    
+    return slotIndex >= lunchStart && slotIndex <= lunchEnd;
+  };
+
+  return (
+    <div className="space-y-8">
+      <div className="text-center">
+        <h2 className="text-3xl font-bold text-slate-800 mb-4">Rules & Constraints</h2>
+        <p className="text-slate-600">Configure global scheduling rules and constraints</p>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card className="animate-slide-in-left">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="w-5 h-5 text-blue-600" />
+              Lunch Break Settings
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label>Lunch Start Time</Label>
+              <Select 
+                value={rules.lunchStartSlot} 
+                onValueChange={(value) => updateRule('lunchStartSlot', value)}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TIME_SLOTS.map(slot => (
+                    <SelectItem key={slot} value={slot}>{slot}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Lunch End Time</Label>
+              <Select 
+                value={rules.lunchEndSlot} 
+                onValueChange={(value) => updateRule('lunchEndSlot', value)}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TIME_SLOTS.map(slot => (
+                    <SelectItem key={slot} value={slot}>{slot}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="animate-slide-in-right">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <MapPin className="w-5 h-5 text-green-600" />
+              Travel & Limits
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label>Travel Gap (Minutes)</Label>
+              <Select 
+                value={rules.travelGapMinutes.toString()} 
+                onValueChange={(value) => updateRule('travelGapMinutes', parseInt(value))}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0">No Gap</SelectItem>
+                  <SelectItem value="10">10 Minutes</SelectItem>
+                  <SelectItem value="15">15 Minutes</SelectItem>
+                  <SelectItem value="20">20 Minutes</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Max Lectures/Day</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  max="10"
+                  value={rules.maxLecturesPerDay}
+                  onChange={(e) => updateRule('maxLecturesPerDay', parseInt(e.target.value) || 1)}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label>Max Labs/Day</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  max="10"
+                  value={rules.maxLabsPerDay}
+                  onChange={(e) => updateRule('maxLabsPerDay', parseInt(e.target.value) || 1)}
+                  className="mt-1"
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="animate-scale-in">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="w-5 h-5 text-purple-600" />
+            Allowed Time Slots
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+              {TIME_SLOTS.map(slot => {
+                const isAllowed = rules.allowedSlots.includes(slot);
+                const isLunchTime = isSlotInLunchWindow(slot);
+                
+                return (
+                  <div 
+                    key={slot} 
+                    className={`flex items-center space-x-2 p-3 rounded-lg border transition-all duration-200 ${
+                      isLunchTime 
+                        ? 'bg-orange-50 border-orange-200' 
+                        : isAllowed 
+                          ? 'bg-green-50 border-green-200' 
+                          : 'bg-red-50 border-red-200'
+                    }`}
+                  >
+                    <Checkbox
+                      id={`slot-${slot}`}
+                      checked={isAllowed}
+                      onCheckedChange={(checked) => handleSlotToggle(slot, checked as boolean)}
+                    />
+                    <label htmlFor={`slot-${slot}`} className="text-sm font-medium cursor-pointer">
+                      {slot}
+                    </label>
+                  </div>
+                );
+              })}
+            </div>
+            
+            <div className="flex items-center gap-6 text-xs">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-green-200 rounded"></div>
+                <span>Allowed</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-orange-200 rounded"></div>
+                <span>Lunch Time</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-red-200 rounded"></div>
+                <span>Blocked</span>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="flex justify-center">
+        <Button 
+          onClick={handleSave}
+          size="lg"
+          className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+        >
+          <Settings className="w-5 h-5 mr-2" />
+          Save Rules
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+export default RulesPage;
