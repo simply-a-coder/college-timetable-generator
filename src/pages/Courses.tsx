@@ -1,74 +1,139 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Trash2, BookOpen, Monitor, Building } from 'lucide-react';
-import { Course } from '@/types';
+import { Course, ROOM_TYPES } from '@/types';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const Courses: React.FC = () => {
   const [courses, setCourses] = useState<Course[]>([]);
+  const [currentProgram, setCurrentProgram] = useState<any>(null);
 
-  const addCourse = () => {
-    const newCourse: Course = {
-      id: Date.now().toString(),
+  useEffect(() => {
+    const savedProgram = localStorage.getItem('selectedProgram');
+    if (savedProgram) {
+      const program = JSON.parse(savedProgram);
+      setCurrentProgram(program);
+      loadCourses(program.id);
+    }
+  }, []);
+
+  const loadCourses = async (programId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('courses')
+        .select('*')
+        .eq('program_id', programId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setCourses(data || []);
+    } catch (error) {
+      console.error('Error loading courses:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load courses.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const addCourse = async () => {
+    if (!currentProgram) return;
+
+    const newCourse = {
+      program_id: currentProgram.id,
       code: '',
       name: '',
-      sessionsPerWeek: 3,
-      durationSlots: 1,
-      roomType: 'lecture_hall',
-      noBackToBack: []
+      sessions_per_week: 3,
+      number_of_hours: 1,
+      room_type: 'lecture_hall',
+      no_back_to_back: []
     };
-    setCourses(prev => [...prev, newCourse]);
-  };
 
-  const removeCourse = (id: string) => {
-    setCourses(prev => prev.filter(course => course.id !== id));
-  };
+    try {
+      const { data, error } = await supabase
+        .from('courses')
+        .insert([newCourse])
+        .select()
+        .single();
 
-  const updateCourse = (id: string, field: keyof Course, value: any) => {
-    setCourses(prev => prev.map(course => 
-      course.id === id ? { ...course, [field]: value } : course
-    ));
-  };
-
-  const handleSave = () => {
-    if (courses.some(c => !c.code.trim() || !c.name.trim())) {
+      if (error) throw error;
+      setCourses(prev => [data, ...prev]);
+    } catch (error) {
+      console.error('Error adding course:', error);
       toast({
-        title: "Validation Error",
-        description: "All courses must have a code and name.",
+        title: "Error",
+        description: "Failed to add course.",
         variant: "destructive"
       });
-      return;
     }
+  };
 
-    const codes = courses.map(c => c.code.trim().toLowerCase());
-    const duplicates = codes.filter((code, index) => codes.indexOf(code) !== index);
-    
-    if (duplicates.length > 0) {
+  const removeCourse = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('courses')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      setCourses(prev => prev.filter(course => course.id !== id));
+      
       toast({
-        title: "Validation Error",
-        description: "Duplicate course codes found.",
+        title: "Success",
+        description: "Course removed successfully!",
+      });
+    } catch (error) {
+      console.error('Error removing course:', error);
+      toast({
+        title: "Error",
+        description: "Failed to remove course.",
         variant: "destructive"
       });
-      return;
     }
-
-    localStorage.setItem('courses', JSON.stringify(courses));
-    toast({
-      title: "Success",
-      description: `${courses.length} courses saved successfully!`,
-    });
   };
+
+  const updateCourse = async (id: string, field: keyof Course, value: any) => {
+    try {
+      const { error } = await supabase
+        .from('courses')
+        .update({ [field]: value })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setCourses(prev => prev.map(course => 
+        course.id === id ? { ...course, [field]: value } : course
+      ));
+    } catch (error) {
+      console.error('Error updating course:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update course.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  if (!currentProgram) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-slate-600">Please select a program first.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
       <div className="text-center">
         <h2 className="text-3xl font-bold text-slate-800 mb-4">Course & Lab Management</h2>
-        <p className="text-slate-600">Define your courses, sessions, and room requirements</p>
+        <p className="text-slate-600">Define your courses, sessions, and room requirements for {currentProgram.name}</p>
       </div>
 
       <div className="flex justify-center">
@@ -136,49 +201,49 @@ const Courses: React.FC = () => {
                     type="number"
                     min="1"
                     max="7"
-                    value={course.sessionsPerWeek}
-                    onChange={(e) => updateCourse(course.id, 'sessionsPerWeek', parseInt(e.target.value) || 1)}
+                    value={course.sessions_per_week}
+                    onChange={(e) => updateCourse(course.id, 'sessions_per_week', parseInt(e.target.value) || 1)}
                     className="mt-1"
                   />
                 </div>
                 <div>
-                  <Label>Duration (Slots)</Label>
+                  <Label>Number of Hours</Label>
                   <Select 
-                    value={course.durationSlots.toString()} 
-                    onValueChange={(value) => updateCourse(course.id, 'durationSlots', parseInt(value))}
+                    value={course.number_of_hours.toString()} 
+                    onValueChange={(value) => updateCourse(course.id, 'number_of_hours', parseInt(value))}
                   >
                     <SelectTrigger className="mt-1">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="1">1 Slot</SelectItem>
-                      <SelectItem value="2">2 Slots</SelectItem>
-                      <SelectItem value="3">3 Slots</SelectItem>
+                      <SelectItem value="1">1 Hour</SelectItem>
+                      <SelectItem value="2">2 Hours</SelectItem>
+                      <SelectItem value="3">3 Hours</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
                   <Label>Room Type</Label>
                   <Select 
-                    value={course.roomType} 
-                    onValueChange={(value: 'lecture_hall' | 'computer_lab') => updateCourse(course.id, 'roomType', value)}
+                    value={course.room_type} 
+                    onValueChange={(value) => updateCourse(course.id, 'room_type', value)}
                   >
                     <SelectTrigger className="mt-1">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="lecture_hall">
-                        <div className="flex items-center gap-2">
-                          <Building className="w-4 h-4" />
-                          Lecture Hall
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="computer_lab">
-                        <div className="flex items-center gap-2">
-                          <Monitor className="w-4 h-4" />
-                          Computer Lab
-                        </div>
-                      </SelectItem>
+                      {ROOM_TYPES.map(type => (
+                        <SelectItem key={type} value={type}>
+                          <div className="flex items-center gap-2">
+                            {type.includes('lab') ? (
+                              <Monitor className="w-4 h-4" />
+                            ) : (
+                              <Building className="w-4 h-4" />
+                            )}
+                            {type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                          </div>
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -188,16 +253,14 @@ const Courses: React.FC = () => {
         ))}
       </div>
 
-      {courses.length > 0 && (
-        <div className="flex justify-center">
-          <Button 
-            onClick={handleSave}
-            size="lg"
-            className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-          >
-            Save All Courses
-          </Button>
-        </div>
+      {courses.length === 0 && (
+        <Card className="py-12">
+          <CardContent className="text-center">
+            <BookOpen className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-slate-600 mb-2">No Courses Yet</h3>
+            <p className="text-slate-500">Add your first course to get started.</p>
+          </CardContent>
+        </Card>
       )}
     </div>
   );
