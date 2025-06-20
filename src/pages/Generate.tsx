@@ -41,13 +41,13 @@ const Generate: React.FC = () => {
       const assignments: Assignment[] = JSON.parse(assignmentsData);
       const rules: Rules = rulesData ? JSON.parse(rulesData) : {
         id: '1',
-        lunchStartSlot: '12:05-12:55',
-        lunchEndSlot: '13:05-13:55',
-        travelGapMinutes: 10,
-        maxLecturesPerDay: 6,
-        maxLabsPerDay: 3,
-        allowedSlots: TIME_SLOTS,
-        sectionBreakRules: {}
+        lunch_start_slot: '12:05-12:55',
+        lunch_end_slot: '13:05-13:55',
+        travel_gap_minutes: 10,
+        max_lectures_per_day: 6,
+        max_labs_per_day: 3,
+        allowed_slots: TIME_SLOTS,
+        section_break_rules: {}
       };
 
       console.log('Generating timetable with data:', {

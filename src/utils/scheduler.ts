@@ -57,7 +57,7 @@ export class TimetableScheduler {
     this.slots = [];
     DAYS.slice(0, 5).forEach((day, dayIndex) => {
       TIME_SLOTS.forEach((time, timeIndex) => {
-        if (this.rules.allowedSlots.includes(time)) {
+        if (this.rules.allowed_slots.includes(time)) {
           this.slots.push({
             day,
             time,
@@ -95,21 +95,21 @@ export class TimetableScheduler {
   private isSlotAvailable(sectionId: string, teacherId: string, slot: Slot, duration: number, roomType: 'lecture_hall' | 'computer_lab'): { available: boolean; room?: Room } {
     // Check if slot conflicts with section's lecture timing restrictions
     const section = this.sections.find(s => s.id === sectionId);
-    if (section && section.lectureTimings) {
-      if (!this.isWithinLectureTimings(slot.time, section.lectureTimings, roomType)) {
+    if (section && section.lecture_timings) {
+      if (!this.isWithinLectureTimings(slot.time, section.lecture_timings, roomType)) {
         return { available: false };
       }
     }
 
     // Check section-specific break rules
-    const sectionBreakRule = this.rules.sectionBreakRules[sectionId];
+    const sectionBreakRule = this.rules.section_break_rules[sectionId];
     if (sectionBreakRule?.hasBreak && sectionBreakRule.breakSlot === slot.time) {
       return { available: false };
     }
 
     // Check if teacher is available
     const teacher = this.teachers.find(t => t.id === teacherId);
-    if (!teacher || !teacher.availableDays.includes(slot.day) || !teacher.availableSlots.includes(slot.time)) {
+    if (!teacher || !teacher.available_days.includes(slot.day) || !teacher.available_slots.includes(slot.time)) {
       return { available: false };
     }
 
@@ -160,13 +160,13 @@ export class TimetableScheduler {
     return { available: !!availableRoom, room: availableRoom };
   }
 
-  private isWithinLectureTimings(timeSlot: string, lectureTimings: string, roomType: 'lecture_hall' | 'computer_lab'): boolean {
+  private isWithinLectureTimings(timeSlot: string, lecture_timings: string, roomType: 'lecture_hall' | 'computer_lab'): boolean {
     // Labs can be scheduled outside lecture timings
     if (roomType === 'computer_lab') return true;
 
     const timeIndex = TIME_SLOTS.indexOf(timeSlot);
     
-    switch (lectureTimings) {
+    switch (lecture_timings) {
       case '8-1': // 8:00 AM - 1:00 PM
         return timeIndex >= 0 && timeIndex <= 4; // Up to 12:55
       case '10-4': // 10:00 AM - 4:00 PM  
@@ -182,37 +182,37 @@ export class TimetableScheduler {
     const sessions: ScheduleSession[] = [];
 
     for (const assignment of this.assignments) {
-      const course = this.courses.find(c => c.id === assignment.courseId);
-      const teacher = this.teachers.find(t => t.id === assignment.teacherId);
+      const course = this.courses.find(c => c.id === assignment.course_id);
+      const teacher = this.teachers.find(t => t.id === assignment.teacher_id);
       
-      if (!course || !teacher || !assignment.sectionOrGroupIds?.length) continue;
+      if (!course || !teacher || !assignment.section_or_group_ids?.length) continue;
 
-      for (const sectionOrGroupId of assignment.sectionOrGroupIds) {
+      for (const sectionOrGroupId of assignment.section_or_group_ids) {
         if (assignment.type === 'group') {
           const group = this.groups.find(g => g.id === sectionOrGroupId);
           if (!group) continue;
 
-          const sessionsCount = group.sessionsOverride || course.sessionsPerWeek;
+          const sessionsCount = group.sessions_override || course.sessions_per_week;
           
           for (let i = 0; i < sessionsCount; i++) {
             sessions.push({
               sectionId: group.id,
-              teacherId: assignment.teacherId,
-              courseId: assignment.courseId,
-              duration: course.durationSlots,
-              roomType: course.roomType,
+              teacherId: assignment.teacher_id,
+              courseId: assignment.course_id,
+              duration: course.number_of_hours,
+              roomType: course.room_type,
               isGroupClass: true,
               groupSections: group.sections
             });
           }
         } else {
-          for (let i = 0; i < course.sessionsPerWeek; i++) {
+          for (let i = 0; i < course.sessions_per_week; i++) {
             sessions.push({
               sectionId: sectionOrGroupId,
-              teacherId: assignment.teacherId,
-              courseId: assignment.courseId,
-              duration: course.durationSlots,
-              roomType: course.roomType
+              teacherId: assignment.teacher_id,
+              courseId: assignment.course_id,
+              duration: course.number_of_hours,
+              roomType: course.room_type
             });
           }
         }
@@ -227,7 +227,7 @@ export class TimetableScheduler {
       const sectionA = this.sections.find(s => s.id === a.sectionId);
       const sectionB = this.sections.find(s => s.id === b.sectionId);
       
-      return (sectionB?.studentCount || 0) - (sectionA?.studentCount || 0);
+      return (sectionB?.student_count || 0) - (sectionA?.student_count || 0);
     });
   }
 
