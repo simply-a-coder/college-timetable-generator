@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,13 +14,13 @@ const RulesPage: React.FC = () => {
   const [sections, setSections] = useState<Section[]>([]);
   const [rules, setRules] = useState<Rules>({
     id: '1',
-    lunchStartSlot: '12:05-12:55',
-    lunchEndSlot: '13:05-13:55',
-    travelGapMinutes: 10,
-    maxLecturesPerDay: 6,
-    maxLabsPerDay: 3,
-    allowedSlots: TIME_SLOTS,
-    sectionBreakRules: {}
+    lunch_start_slot: '12:05-12:55',
+    lunch_end_slot: '13:05-13:55',
+    travel_gap_minutes: 10,
+    max_lectures_per_day: 6,
+    max_labs_per_day: 3,
+    allowed_slots: TIME_SLOTS,
+    section_break_rules: {}
   });
 
   useEffect(() => {
@@ -33,7 +34,7 @@ const RulesPage: React.FC = () => {
       // Initialize break rules for new sections
       if (savedRules) {
         const rulesData = JSON.parse(savedRules);
-        const newBreakRules = { ...rulesData.sectionBreakRules };
+        const newBreakRules = { ...rulesData.section_break_rules };
         
         sectionsData.forEach((section: Section) => {
           if (!newBreakRules[section.id]) {
@@ -41,7 +42,7 @@ const RulesPage: React.FC = () => {
           }
         });
         
-        setRules({ ...rulesData, sectionBreakRules: newBreakRules });
+        setRules({ ...rulesData, section_break_rules: newBreakRules });
       }
     }
   }, []);
@@ -53,10 +54,10 @@ const RulesPage: React.FC = () => {
   const updateSectionBreakRule = (sectionId: string, field: 'hasBreak' | 'breakSlot', value: any) => {
     setRules(prev => ({
       ...prev,
-      sectionBreakRules: {
-        ...prev.sectionBreakRules,
+      section_break_rules: {
+        ...prev.section_break_rules,
         [sectionId]: {
-          ...prev.sectionBreakRules[sectionId],
+          ...prev.section_break_rules[sectionId],
           [field]: value
         }
       }
@@ -66,14 +67,14 @@ const RulesPage: React.FC = () => {
   const handleSlotToggle = (slot: string, checked: boolean) => {
     setRules(prev => ({
       ...prev,
-      allowedSlots: checked 
-        ? [...prev.allowedSlots, slot]
-        : prev.allowedSlots.filter(s => s !== slot)
+      allowed_slots: checked 
+        ? [...prev.allowed_slots, slot]
+        : prev.allowed_slots.filter(s => s !== slot)
     }));
   };
 
   const handleSave = () => {
-    if (rules.allowedSlots.length === 0) {
+    if (rules.allowed_slots.length === 0) {
       toast({
         title: "Validation Error",
         description: "At least one time slot must be allowed.",
@@ -90,8 +91,8 @@ const RulesPage: React.FC = () => {
   };
 
   const isSlotInLunchWindow = (slot: string) => {
-    const lunchStart = TIME_SLOTS.indexOf(rules.lunchStartSlot);
-    const lunchEnd = TIME_SLOTS.indexOf(rules.lunchEndSlot);
+    const lunchStart = TIME_SLOTS.indexOf(rules.lunch_start_slot);
+    const lunchEnd = TIME_SLOTS.indexOf(rules.lunch_end_slot);
     const slotIndex = TIME_SLOTS.indexOf(slot);
     
     return slotIndex >= lunchStart && slotIndex <= lunchEnd;
@@ -116,8 +117,8 @@ const RulesPage: React.FC = () => {
             <div>
               <Label>Lunch Start Time</Label>
               <Select 
-                value={rules.lunchStartSlot} 
-                onValueChange={(value) => updateRule('lunchStartSlot', value)}
+                value={rules.lunch_start_slot} 
+                onValueChange={(value) => updateRule('lunch_start_slot', value)}
               >
                 <SelectTrigger className="mt-1">
                   <SelectValue />
@@ -132,8 +133,8 @@ const RulesPage: React.FC = () => {
             <div>
               <Label>Lunch End Time</Label>
               <Select 
-                value={rules.lunchEndSlot} 
-                onValueChange={(value) => updateRule('lunchEndSlot', value)}
+                value={rules.lunch_end_slot} 
+                onValueChange={(value) => updateRule('lunch_end_slot', value)}
               >
                 <SelectTrigger className="mt-1">
                   <SelectValue />
@@ -159,8 +160,8 @@ const RulesPage: React.FC = () => {
             <div>
               <Label>Travel Gap (Minutes)</Label>
               <Select 
-                value={rules.travelGapMinutes.toString()} 
-                onValueChange={(value) => updateRule('travelGapMinutes', parseInt(value))}
+                value={rules.travel_gap_minutes.toString()} 
+                onValueChange={(value) => updateRule('travel_gap_minutes', parseInt(value))}
               >
                 <SelectTrigger className="mt-1">
                   <SelectValue />
@@ -180,8 +181,8 @@ const RulesPage: React.FC = () => {
                   type="number"
                   min="1"
                   max="10"
-                  value={rules.maxLecturesPerDay}
-                  onChange={(e) => updateRule('maxLecturesPerDay', parseInt(e.target.value) || 1)}
+                  value={rules.max_lectures_per_day}
+                  onChange={(e) => updateRule('max_lectures_per_day', parseInt(e.target.value) || 1)}
                   className="mt-1"
                 />
               </div>
@@ -191,8 +192,8 @@ const RulesPage: React.FC = () => {
                   type="number"
                   min="1"
                   max="10"
-                  value={rules.maxLabsPerDay}
-                  onChange={(e) => updateRule('maxLabsPerDay', parseInt(e.target.value) || 1)}
+                  value={rules.max_labs_per_day}
+                  onChange={(e) => updateRule('max_labs_per_day', parseInt(e.target.value) || 1)}
                   className="mt-1"
                 />
               </div>
@@ -219,7 +220,7 @@ const RulesPage: React.FC = () => {
                     <div className="flex items-center space-x-2">
                       <Checkbox
                         id={`break-${section.id}`}
-                        checked={rules.sectionBreakRules[section.id]?.hasBreak !== false}
+                        checked={rules.section_break_rules[section.id]?.hasBreak !== false}
                         onCheckedChange={(checked) => updateSectionBreakRule(section.id, 'hasBreak', checked)}
                       />
                       <label htmlFor={`break-${section.id}`} className="text-sm">
@@ -227,11 +228,11 @@ const RulesPage: React.FC = () => {
                       </label>
                     </div>
                     
-                    {rules.sectionBreakRules[section.id]?.hasBreak !== false && (
+                    {rules.section_break_rules[section.id]?.hasBreak !== false && (
                       <div>
                         <Label className="text-xs">Break Time</Label>
                         <Select 
-                          value={rules.sectionBreakRules[section.id]?.breakSlot || '12:05-12:55'}
+                          value={rules.section_break_rules[section.id]?.breakSlot || '12:05-12:55'}
                           onValueChange={(value) => updateSectionBreakRule(section.id, 'breakSlot', value)}
                         >
                           <SelectTrigger className="mt-1 h-8 text-xs">
@@ -266,7 +267,7 @@ const RulesPage: React.FC = () => {
           <div className="space-y-4">
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
               {TIME_SLOTS.map(slot => {
-                const isAllowed = rules.allowedSlots.includes(slot);
+                const isAllowed = rules.allowed_slots.includes(slot);
                 const isLunchTime = isSlotInLunchWindow(slot);
                 
                 return (

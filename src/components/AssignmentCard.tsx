@@ -30,16 +30,16 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({
   onRemove
 }) => {
   const handleSectionToggle = (id: string, checked: boolean) => {
-    const currentIds = assignment.sectionOrGroupIds || [];
+    const currentIds = assignment.section_or_group_ids || [];
     const newIds = checked 
       ? [...currentIds, id]
       : currentIds.filter(sid => sid !== id);
-    onUpdate(assignment.id, 'sectionOrGroupIds', newIds);
+    onUpdate(assignment.id, 'section_or_group_ids', newIds);
   };
 
   const removeSectionOrGroup = (id: string) => {
-    const newIds = (assignment.sectionOrGroupIds || []).filter(sid => sid !== id);
-    onUpdate(assignment.id, 'sectionOrGroupIds', newIds);
+    const newIds = (assignment.section_or_group_ids || []).filter(sid => sid !== id);
+    onUpdate(assignment.id, 'section_or_group_ids', newIds);
   };
 
   const getEntityName = (id: string) => {
@@ -66,8 +66,8 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({
               <div>
                 <label className="text-sm font-medium text-slate-700 mb-1 block">Teacher</label>
                 <Select 
-                  value={assignment.teacherId} 
-                  onValueChange={(value) => onUpdate(assignment.id, 'teacherId', value)}
+                  value={assignment.teacher_id} 
+                  onValueChange={(value) => onUpdate(assignment.id, 'teacher_id', value)}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select Teacher" />
@@ -85,8 +85,8 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({
               <div>
                 <label className="text-sm font-medium text-slate-700 mb-1 block">Course</label>
                 <Select 
-                  value={assignment.courseId} 
-                  onValueChange={(value) => onUpdate(assignment.id, 'courseId', value)}
+                  value={assignment.course_id} 
+                  onValueChange={(value) => onUpdate(assignment.id, 'course_id', value)}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select Course" />
@@ -124,9 +124,9 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({
               </label>
               
               {/* Selected items display */}
-              {assignment.sectionOrGroupIds && assignment.sectionOrGroupIds.length > 0 && (
+              {assignment.section_or_group_ids && assignment.section_or_group_ids.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-3">
-                  {assignment.sectionOrGroupIds.map(id => (
+                  {assignment.section_or_group_ids.map(id => (
                     <Badge key={id} variant="secondary" className="flex items-center gap-1">
                       {getEntityName(id)}
                       <Button
@@ -150,7 +150,7 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({
                         <div key={section.id} className="flex items-center space-x-2">
                           <Checkbox
                             id={`section-${section.id}`}
-                            checked={assignment.sectionOrGroupIds?.includes(section.id) || false}
+                            checked={assignment.section_or_group_ids?.includes(section.id) || false}
                             onCheckedChange={(checked) => handleSectionToggle(section.id, checked as boolean)}
                           />
                           <label htmlFor={`section-${section.id}`} className="text-sm cursor-pointer">
@@ -162,7 +162,7 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({
                         <div key={group.id} className="flex items-center space-x-2">
                           <Checkbox
                             id={`group-${group.id}`}
-                            checked={assignment.sectionOrGroupIds?.includes(group.id) || false}
+                            checked={assignment.section_or_group_ids?.includes(group.id) || false}
                             onCheckedChange={(checked) => handleSectionToggle(group.id, checked as boolean)}
                           />
                           <label htmlFor={`group-${group.id}`} className="text-sm cursor-pointer">

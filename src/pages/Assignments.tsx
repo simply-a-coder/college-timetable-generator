@@ -32,9 +32,9 @@ const Assignments: React.FC = () => {
   const addAssignment = () => {
     const newAssignment: Assignment = {
       id: Date.now().toString(),
-      teacherId: '',
-      courseId: '',
-      sectionOrGroupIds: [],
+      teacher_id: '',
+      course_id: '',
+      section_or_group_ids: [],
       type: 'section'
     };
     setAssignments(prev => [...prev, newAssignment]);
@@ -52,7 +52,7 @@ const Assignments: React.FC = () => {
 
   const handleSave = () => {
     // Validate assignments
-    const incomplete = assignments.filter(a => !a.teacherId || !a.courseId || !a.sectionOrGroupIds?.length);
+    const incomplete = assignments.filter(a => !a.teacher_id || !a.course_id || !a.section_or_group_ids?.length);
     if (incomplete.length > 0) {
       toast({
         title: "Validation Error",

@@ -12,7 +12,7 @@ import { toast } from '@/hooks/use-toast';
 const Sections: React.FC = () => {
   const [numberOfSections, setNumberOfSections] = useState<number>(1);
   const [sections, setSections] = useState<Section[]>([
-    { id: '1', code: 'A1', studentCount: 30, lectureTimings: '8-1' }
+    { id: '1', code: 'A1', student_count: 30, lecture_timings: '8-1' }
   ]);
 
   const timingOptions = [
@@ -32,8 +32,8 @@ const Sections: React.FC = () => {
         newSections.push({
           id: String(i + 1),
           code: `A${i + 1}`,
-          studentCount: 30,
-          lectureTimings: '8-1'
+          student_count: 30,
+          lecture_timings: '8-1'
         });
       }
       setSections(newSections);
@@ -126,16 +126,16 @@ const Sections: React.FC = () => {
                   id={`count-${section.id}`}
                   type="number"
                   min="1"
-                  value={section.studentCount}
-                  onChange={(e) => updateSection(section.id, 'studentCount', parseInt(e.target.value) || 0)}
+                  value={section.student_count}
+                  onChange={(e) => updateSection(section.id, 'student_count', parseInt(e.target.value) || 0)}
                   className="mt-1"
                 />
               </div>
               <div>
                 <Label>Lecture Timings</Label>
                 <Select 
-                  value={section.lectureTimings} 
-                  onValueChange={(value) => updateSection(section.id, 'lectureTimings', value)}
+                  value={section.lecture_timings} 
+                  onValueChange={(value) => updateSection(section.id, 'lecture_timings', value)}
                 >
                   <SelectTrigger className="mt-1">
                     <SelectValue placeholder="Select timing" />

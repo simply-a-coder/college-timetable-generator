@@ -19,8 +19,8 @@ const Groups: React.FC = () => {
   const [newGroup, setNewGroup] = useState<Omit<GroupClass, 'id'>>({
     name: '',
     sections: [],
-    courseId: '',
-    sessionsOverride: undefined
+    course_id: '',
+    sessions_override: undefined
   });
 
   useEffect(() => {
@@ -60,7 +60,7 @@ const Groups: React.FC = () => {
       return;
     }
 
-    if (!newGroup.courseId) {
+    if (!newGroup.course_id) {
       toast({
         title: "Validation Error",
         description: "A course must be selected.",
@@ -78,8 +78,8 @@ const Groups: React.FC = () => {
     setNewGroup({
       name: '',
       sections: [],
-      courseId: '',
-      sessionsOverride: undefined
+      course_id: '',
+      sessions_override: undefined
     });
     setIsDialogOpen(false);
 
@@ -161,7 +161,7 @@ const Groups: React.FC = () => {
                         onCheckedChange={(checked) => handleSectionToggle(section.id, checked as boolean)}
                       />
                       <label htmlFor={`section-${section.id}`} className="text-sm font-medium">
-                        {section.code} ({section.studentCount} students)
+                        {section.code} ({section.student_count} students)
                       </label>
                     </div>
                   ))}
@@ -171,8 +171,8 @@ const Groups: React.FC = () => {
               <div>
                 <Label>Course</Label>
                 <Select 
-                  value={newGroup.courseId} 
-                  onValueChange={(value) => setNewGroup(prev => ({ ...prev, courseId: value }))}
+                  value={newGroup.course_id} 
+                  onValueChange={(value) => setNewGroup(prev => ({ ...prev, course_id: value }))}
                 >
                   <SelectTrigger className="mt-1">
                     <SelectValue placeholder="Select a course" />
@@ -196,10 +196,10 @@ const Groups: React.FC = () => {
                   type="number"
                   min="1"
                   max="7"
-                  value={newGroup.sessionsOverride || ''}
+                  value={newGroup.sessions_override || ''}
                   onChange={(e) => setNewGroup(prev => ({ 
                     ...prev, 
-                    sessionsOverride: e.target.value ? parseInt(e.target.value) : undefined 
+                    sessions_override: e.target.value ? parseInt(e.target.value) : undefined 
                   }))}
                   placeholder="Leave empty to use course default"
                   className="mt-1"
@@ -244,12 +244,12 @@ const Groups: React.FC = () => {
               </div>
               <div>
                 <Label className="text-xs text-slate-600">Course</Label>
-                <p className="text-sm font-medium">{getCourseName(group.courseId)}</p>
+                <p className="text-sm font-medium">{getCourseName(group.course_id)}</p>
               </div>
-              {group.sessionsOverride && (
+              {group.sessions_override && (
                 <div>
                   <Label className="text-xs text-slate-600">Sessions Override</Label>
-                  <p className="text-sm font-medium">{group.sessionsOverride} per week</p>
+                  <p className="text-sm font-medium">{group.sessions_override} per week</p>
                 </div>
               )}
             </CardContent>

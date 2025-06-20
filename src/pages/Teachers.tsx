@@ -16,11 +16,11 @@ const Teachers: React.FC = () => {
     const newTeacher: Teacher = {
       id: Date.now().toString(),
       name: '',
-      availableDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
-      availableSlots: [],
-      daysOff: [],
-      maxHoursPerDay: 6,
-      maxHoursPerWeek: 30
+      available_days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+      available_slots: [],
+      days_off: [],
+      max_hours_per_day: 6,
+      max_hours_per_week: 30
     };
     setTeachers(prev => [...prev, newTeacher]);
   };
@@ -38,10 +38,10 @@ const Teachers: React.FC = () => {
   const handleDayToggle = (teacherId: string, day: string, checked: boolean) => {
     setTeachers(prev => prev.map(teacher => {
       if (teacher.id === teacherId) {
-        const availableDays = checked 
-          ? [...teacher.availableDays, day]
-          : teacher.availableDays.filter(d => d !== day);
-        return { ...teacher, availableDays };
+        const available_days = checked 
+          ? [...teacher.available_days, day]
+          : teacher.available_days.filter(d => d !== day);
+        return { ...teacher, available_days };
       }
       return teacher;
     }));
@@ -50,10 +50,10 @@ const Teachers: React.FC = () => {
   const handleSlotToggle = (teacherId: string, slot: string, checked: boolean) => {
     setTeachers(prev => prev.map(teacher => {
       if (teacher.id === teacherId) {
-        const availableSlots = checked 
-          ? [...teacher.availableSlots, slot]
-          : teacher.availableSlots.filter(s => s !== slot);
-        return { ...teacher, availableSlots };
+        const available_slots = checked 
+          ? [...teacher.available_slots, slot]
+          : teacher.available_slots.filter(s => s !== slot);
+        return { ...teacher, available_slots };
       }
       return teacher;
     }));
@@ -69,7 +69,7 @@ const Teachers: React.FC = () => {
       return;
     }
 
-    if (teachers.some(t => t.availableDays.length === 0)) {
+    if (teachers.some(t => t.available_days.length === 0)) {
       toast({
         title: "Validation Error",
         description: "All teachers must have at least one working day.",
@@ -145,8 +145,8 @@ const Teachers: React.FC = () => {
                     type="number"
                     min="1"
                     max="10"
-                    value={teacher.maxHoursPerDay}
-                    onChange={(e) => updateTeacher(teacher.id, 'maxHoursPerDay', parseInt(e.target.value) || 1)}
+                    value={teacher.max_hours_per_day}
+                    onChange={(e) => updateTeacher(teacher.id, 'max_hours_per_day', parseInt(e.target.value) || 1)}
                     className="mt-1"
                   />
                 </div>
@@ -156,8 +156,8 @@ const Teachers: React.FC = () => {
                     type="number"
                     min="1"
                     max="50"
-                    value={teacher.maxHoursPerWeek}
-                    onChange={(e) => updateTeacher(teacher.id, 'maxHoursPerWeek', parseInt(e.target.value) || 1)}
+                    value={teacher.max_hours_per_week}
+                    onChange={(e) => updateTeacher(teacher.id, 'max_hours_per_week', parseInt(e.target.value) || 1)}
                     className="mt-1"
                   />
                 </div>
@@ -173,7 +173,7 @@ const Teachers: React.FC = () => {
                     <div key={day} className="flex items-center space-x-2">
                       <Checkbox
                         id={`${teacher.id}-${day}`}
-                        checked={teacher.availableDays.includes(day)}
+                        checked={teacher.available_days.includes(day)}
                         onCheckedChange={(checked) => handleDayToggle(teacher.id, day, checked as boolean)}
                       />
                       <label htmlFor={`${teacher.id}-${day}`} className="text-sm font-medium">
@@ -194,7 +194,7 @@ const Teachers: React.FC = () => {
                     <div key={slot} className="flex items-center space-x-2">
                       <Checkbox
                         id={`${teacher.id}-${slot}`}
-                        checked={teacher.availableSlots.includes(slot)}
+                        checked={teacher.available_slots.includes(slot)}
                         onCheckedChange={(checked) => handleSlotToggle(teacher.id, slot, checked as boolean)}
                       />
                       <label htmlFor={`${teacher.id}-${slot}`} className="text-xs font-medium">
