@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Trash2, UserCheck, DragHandleDots2Icon } from 'lucide-react';
+import { Plus, Trash2, UserCheck, GripVertical } from 'lucide-react';
 import { Assignment, Teacher, Course, Section, GroupClass } from '@/types';
 import { toast } from '@/hooks/use-toast';
 
@@ -133,7 +132,7 @@ const Assignments: React.FC = () => {
             <CardContent className="p-6">
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2 text-slate-400">
-                  <DragHandleDots2Icon className="w-5 h-5" />
+                  <GripVertical className="w-5 h-5" />
                   <span className="text-sm font-medium">#{index + 1}</span>
                 </div>
 
