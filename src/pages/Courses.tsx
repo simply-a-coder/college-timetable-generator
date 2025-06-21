@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Trash2, BookOpen, Monitor, Building } from 'lucide-react';
+import { Plus, Trash2, BookOpen, Monitor, Building, Save } from 'lucide-react';
 import { Course, ROOM_TYPES } from '@/types';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 const Courses: React.FC = () => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [currentProgram, setCurrentProgram] = useState<any>(null);
+  const [unsavedChanges, setUnsavedChanges] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const savedProgram = localStorage.getItem('selectedProgram');
@@ -25,6 +26,9 @@ const Courses: React.FC = () => {
 
   const loadCourses = async (programId: string) => {
     try {
+      // Clear any existing data first
+      setCourses([]);
+      
       const { data, error } = await supabase
         .from('courses')
         .select('*')
@@ -33,6 +37,7 @@ const Courses: React.FC = () => {
 
       if (error) throw error;
       setCourses(data || []);
+      setUnsavedChanges(new Set());
     } catch (error) {
       console.error('Error loading courses:', error);
       toast({
@@ -65,6 +70,7 @@ const Courses: React.FC = () => {
 
       if (error) throw error;
       setCourses(prev => [data, ...prev]);
+      setUnsavedChanges(new Set());
     } catch (error) {
       console.error('Error adding course:', error);
       toast({
@@ -84,6 +90,11 @@ const Courses: React.FC = () => {
 
       if (error) throw error;
       setCourses(prev => prev.filter(course => course.id !== id));
+      setUnsavedChanges(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(id);
+        return newSet;
+      });
       
       toast({
         title: "Success",
@@ -99,26 +110,55 @@ const Courses: React.FC = () => {
     }
   };
 
-  const updateCourse = async (id: string, field: keyof Course, value: any) => {
+  const updateCourse = (id: string, field: keyof Course, value: any) => {
+    setCourses(prev => prev.map(course => 
+      course.id === id ? { ...course, [field]: value } : course
+    ));
+    setUnsavedChanges(prev => new Set(prev).add(id));
+  };
+
+  const saveCourse = async (courseId: string) => {
+    const course = courses.find(c => c.id === courseId);
+    if (!course) return;
+
     try {
       const { error } = await supabase
         .from('courses')
-        .update({ [field]: value })
-        .eq('id', id);
+        .update({
+          code: course.code,
+          name: course.name,
+          sessions_per_week: course.sessions_per_week,
+          number_of_hours: course.number_of_hours,
+          room_type: course.room_type,
+          no_back_to_back: course.no_back_to_back
+        })
+        .eq('id', courseId);
 
       if (error) throw error;
 
-      setCourses(prev => prev.map(course => 
-        course.id === id ? { ...course, [field]: value } : course
-      ));
+      setUnsavedChanges(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(courseId);
+        return newSet;
+      });
+
+      toast({
+        title: "Success",
+        description: "Course saved successfully!",
+      });
     } catch (error) {
-      console.error('Error updating course:', error);
+      console.error('Error saving course:', error);
       toast({
         title: "Error",
-        description: "Failed to update course.",
+        description: "Failed to save course.",
         variant: "destructive"
       });
     }
+  };
+
+  const saveAllCourses = async () => {
+    const promises = Array.from(unsavedChanges).map(courseId => saveCourse(courseId));
+    await Promise.all(promises);
   };
 
   if (!currentProgram) {
@@ -136,7 +176,7 @@ const Courses: React.FC = () => {
         <p className="text-slate-600">Define your courses, sessions, and room requirements for {currentProgram.name}</p>
       </div>
 
-      <div className="flex justify-center">
+      <div className="flex justify-center gap-4">
         <Button 
           onClick={addCourse}
           size="lg"
@@ -145,13 +185,26 @@ const Courses: React.FC = () => {
           <Plus className="w-5 h-5 mr-2" />
           Add Course
         </Button>
+        {unsavedChanges.size > 0 && (
+          <Button 
+            onClick={saveAllCourses}
+            size="lg"
+            variant="outline"
+            className="border-green-600 text-green-600 hover:bg-green-50"
+          >
+            <Save className="w-5 h-5 mr-2" />
+            Save All Changes ({unsavedChanges.size})
+          </Button>
+        )}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         {courses.map((course, index) => (
           <Card 
             key={course.id} 
-            className="animate-flip-in transition-all duration-200 hover:shadow-lg"
+            className={`animate-flip-in transition-all duration-200 hover:shadow-lg ${
+              unsavedChanges.has(course.id) ? 'ring-2 ring-orange-300' : ''
+            }`}
             style={{ animationDelay: `${index * 100}ms` }}
           >
             <CardHeader className="pb-3">
@@ -159,15 +212,32 @@ const Courses: React.FC = () => {
                 <CardTitle className="flex items-center gap-2">
                   <BookOpen className="w-5 h-5 text-purple-600" />
                   Course {index + 1}
+                  {unsavedChanges.has(course.id) && (
+                    <span className="text-xs bg-orange-100 text-orange-600 px-2 py-1 rounded">
+                      Unsaved
+                    </span>
+                  )}
                 </CardTitle>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => removeCourse(course.id)}
-                  className="text-red-600 hover:text-red-700"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
+                <div className="flex gap-2">
+                  {unsavedChanges.has(course.id) && (
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => saveCourse(course.id)}
+                      className="text-green-600 hover:text-green-700"
+                    >
+                      <Save className="w-4 h-4" />
+                    </Button>
+                  )}
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => removeCourse(course.id)}
+                    className="text-red-600 hover:text-red-700"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-6">

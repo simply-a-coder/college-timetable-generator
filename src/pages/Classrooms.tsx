@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Trash2, Building, Users } from 'lucide-react';
+import { Plus, Trash2, Building, Users, Save } from 'lucide-react';
 import { Classroom, ROOM_TYPES } from '@/types';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 const Classrooms: React.FC = () => {
   const [classrooms, setClassrooms] = useState<Classroom[]>([]);
   const [currentProgram, setCurrentProgram] = useState<any>(null);
+  const [unsavedChanges, setUnsavedChanges] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const savedProgram = localStorage.getItem('selectedProgram');
@@ -25,6 +26,9 @@ const Classrooms: React.FC = () => {
 
   const loadClassrooms = async (programId: string) => {
     try {
+      // Clear any existing data first
+      setClassrooms([]);
+      
       const { data, error } = await supabase
         .from('classrooms')
         .select('*')
@@ -33,6 +37,7 @@ const Classrooms: React.FC = () => {
 
       if (error) throw error;
       setClassrooms(data || []);
+      setUnsavedChanges(new Set());
     } catch (error) {
       console.error('Error loading classrooms:', error);
       toast({
@@ -62,6 +67,7 @@ const Classrooms: React.FC = () => {
 
       if (error) throw error;
       setClassrooms(prev => [data, ...prev]);
+      setUnsavedChanges(new Set());
     } catch (error) {
       console.error('Error adding classroom:', error);
       toast({
@@ -81,6 +87,11 @@ const Classrooms: React.FC = () => {
 
       if (error) throw error;
       setClassrooms(prev => prev.filter(classroom => classroom.id !== id));
+      setUnsavedChanges(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(id);
+        return newSet;
+      });
       
       toast({
         title: "Success",
@@ -96,26 +107,52 @@ const Classrooms: React.FC = () => {
     }
   };
 
-  const updateClassroom = async (id: string, field: keyof Classroom, value: any) => {
+  const updateClassroom = (id: string, field: keyof Classroom, value: any) => {
+    setClassrooms(prev => prev.map(classroom => 
+      classroom.id === id ? { ...classroom, [field]: value } : classroom
+    ));
+    setUnsavedChanges(prev => new Set(prev).add(id));
+  };
+
+  const saveClassroom = async (classroomId: string) => {
+    const classroom = classrooms.find(c => c.id === classroomId);
+    if (!classroom) return;
+
     try {
       const { error } = await supabase
         .from('classrooms')
-        .update({ [field]: value })
-        .eq('id', id);
+        .update({
+          name: classroom.name,
+          type: classroom.type,
+          capacity: classroom.capacity
+        })
+        .eq('id', classroomId);
 
       if (error) throw error;
 
-      setClassrooms(prev => prev.map(classroom => 
-        classroom.id === id ? { ...classroom, [field]: value } : classroom
-      ));
+      setUnsavedChanges(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(classroomId);
+        return newSet;
+      });
+
+      toast({
+        title: "Success",
+        description: "Classroom saved successfully!",
+      });
     } catch (error) {
-      console.error('Error updating classroom:', error);
+      console.error('Error saving classroom:', error);
       toast({
         title: "Error",
-        description: "Failed to update classroom.",
+        description: "Failed to save classroom.",
         variant: "destructive"
       });
     }
+  };
+
+  const saveAllClassrooms = async () => {
+    const promises = Array.from(unsavedChanges).map(classroomId => saveClassroom(classroomId));
+    await Promise.all(promises);
   };
 
   if (!currentProgram) {
@@ -133,7 +170,7 @@ const Classrooms: React.FC = () => {
         <p className="text-slate-600">Define your classrooms, labs, and their capacities for {currentProgram.name}</p>
       </div>
 
-      <div className="flex justify-center">
+      <div className="flex justify-center gap-4">
         <Button 
           onClick={addClassroom}
           size="lg"
@@ -142,13 +179,26 @@ const Classrooms: React.FC = () => {
           <Plus className="w-5 h-5 mr-2" />
           Add Classroom
         </Button>
+        {unsavedChanges.size > 0 && (
+          <Button 
+            onClick={saveAllClassrooms}
+            size="lg"
+            variant="outline"
+            className="border-green-600 text-green-600 hover:bg-green-50"
+          >
+            <Save className="w-5 h-5 mr-2" />
+            Save All Changes ({unsavedChanges.size})
+          </Button>
+        )}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         {classrooms.map((classroom, index) => (
           <Card 
             key={classroom.id} 
-            className="animate-flip-in transition-all duration-200 hover:shadow-lg"
+            className={`animate-flip-in transition-all duration-200 hover:shadow-lg ${
+              unsavedChanges.has(classroom.id) ? 'ring-2 ring-orange-300' : ''
+            }`}
             style={{ animationDelay: `${index * 100}ms` }}
           >
             <CardHeader className="pb-3">
@@ -156,15 +206,32 @@ const Classrooms: React.FC = () => {
                 <CardTitle className="flex items-center gap-2">
                   <Building className="w-5 h-5 text-emerald-600" />
                   Classroom {index + 1}
+                  {unsavedChanges.has(classroom.id) && (
+                    <span className="text-xs bg-orange-100 text-orange-600 px-2 py-1 rounded">
+                      Unsaved
+                    </span>
+                  )}
                 </CardTitle>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => removeClassroom(classroom.id)}
-                  className="text-red-600 hover:text-red-700"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
+                <div className="flex gap-2">
+                  {unsavedChanges.has(classroom.id) && (
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => saveClassroom(classroom.id)}
+                      className="text-green-600 hover:text-green-700"
+                    >
+                      <Save className="w-4 h-4" />
+                    </Button>
+                  )}
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => removeClassroom(classroom.id)}
+                    className="text-red-600 hover:text-red-700"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
