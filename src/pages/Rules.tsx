@@ -42,7 +42,17 @@ const RulesPage: React.FC = () => {
           }
         });
         
-        setRules({ ...rulesData, section_break_rules: newBreakRules });
+        // Ensure all required properties have default values
+        setRules({
+          id: rulesData.id || '1',
+          lunch_start_slot: rulesData.lunch_start_slot || '12:05-12:55',
+          lunch_end_slot: rulesData.lunch_end_slot || '13:05-13:55',
+          travel_gap_minutes: rulesData.travel_gap_minutes ?? 10,
+          max_lectures_per_day: rulesData.max_lectures_per_day ?? 6,
+          max_labs_per_day: rulesData.max_labs_per_day ?? 3,
+          allowed_slots: rulesData.allowed_slots || TIME_SLOTS,
+          section_break_rules: newBreakRules
+        });
       }
     }
   }, []);
@@ -160,7 +170,7 @@ const RulesPage: React.FC = () => {
             <div>
               <Label>Travel Gap (Minutes)</Label>
               <Select 
-                value={rules.travel_gap_minutes.toString()} 
+                value={(rules.travel_gap_minutes ?? 10).toString()} 
                 onValueChange={(value) => updateRule('travel_gap_minutes', parseInt(value))}
               >
                 <SelectTrigger className="mt-1">
@@ -181,7 +191,7 @@ const RulesPage: React.FC = () => {
                   type="number"
                   min="1"
                   max="10"
-                  value={rules.max_lectures_per_day}
+                  value={rules.max_lectures_per_day ?? 6}
                   onChange={(e) => updateRule('max_lectures_per_day', parseInt(e.target.value) || 1)}
                   className="mt-1"
                 />
@@ -192,7 +202,7 @@ const RulesPage: React.FC = () => {
                   type="number"
                   min="1"
                   max="10"
-                  value={rules.max_labs_per_day}
+                  value={rules.max_labs_per_day ?? 3}
                   onChange={(e) => updateRule('max_labs_per_day', parseInt(e.target.value) || 1)}
                   className="mt-1"
                 />
