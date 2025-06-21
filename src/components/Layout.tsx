@@ -1,8 +1,10 @@
 
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Calendar, Users, BookOpen, UserCheck, Settings, Grid2x2, Plus } from 'lucide-react';
+import { Calendar, Users, BookOpen, UserCheck, Settings, Grid2x2, Plus, Building, LogOut } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -12,6 +14,7 @@ const navItems = [
   { path: '/sections', label: 'Sections', icon: Grid2x2 },
   { path: '/teachers', label: 'Teachers', icon: Users },
   { path: '/courses', label: 'Courses', icon: BookOpen },
+  { path: '/classrooms', label: 'Classrooms', icon: Building },
   { path: '/groups', label: 'Groups', icon: UserCheck },
   { path: '/assignments', label: 'Assignments', icon: Plus },
   { path: '/rules', label: 'Rules', icon: Settings },
@@ -20,6 +23,11 @@ const navItems = [
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
+  const { user, signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
@@ -31,6 +39,19 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 University Timetable Generator
               </h1>
               <p className="text-slate-600 mt-2">Create optimized schedules with AI-powered constraints</p>
+            </div>
+            
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-slate-600">Welcome, {user?.email}</span>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleSignOut}
+                className="flex items-center gap-2"
+              >
+                <LogOut className="w-4 h-4" />
+                Sign Out
+              </Button>
             </div>
           </div>
           

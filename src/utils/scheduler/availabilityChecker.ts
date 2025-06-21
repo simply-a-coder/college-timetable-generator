@@ -1,117 +1,71 @@
 
-import { TIME_SLOTS } from '@/types';
-import { Slot, ScheduleSession, AvailabilityResult, SchedulerData } from './types';
-import { TimetableEntry, Section, Teacher, Classroom } from '@/types';
+import { ScheduleSession, SchedulerData, Slot, AvailabilityResult } from './types';
+import { TimetableEntry, Classroom } from '@/types';
 
 export class AvailabilityChecker {
   private data: SchedulerData;
-  private schedule: Map<string, TimetableEntry>;
-  private slots: Slot[];
 
-  constructor(data: SchedulerData, schedule: Map<string, TimetableEntry>, slots: Slot[]) {
+  constructor(data: SchedulerData) {
     this.data = data;
-    this.schedule = schedule;
-    this.slots = slots;
   }
 
-  private getSlotKey(sectionId: string, day: string, time: string): string {
-    return `${sectionId}-${day}-${time}`;
-  }
+  checkAvailability(
+    session: ScheduleSession, 
+    slot: Slot, 
+    schedule: Map<string, TimetableEntry[]>
+  ): AvailabilityResult {
+    console.log(`Checking availability for session ${session.courseId} at ${slot.day} ${slot.time}`);
 
-  private getRoomKey(roomId: string, day: string, time: string): string {
-    return `${roomId}-${day}-${time}`;
-  }
-
-  private getTeacherKey(teacherId: string, day: string, time: string): string {
-    return `${teacherId}-${day}-${time}`;
-  }
-
-  private isWithinLectureTimings(timeSlot: string, lecture_timings: string, roomType: 'lecture_hall' | 'computer_lab'): boolean {
-    // Labs can be scheduled outside lecture timings
-    if (roomType === 'computer_lab') return true;
-
-    const timeIndex = TIME_SLOTS.indexOf(timeSlot);
-    
-    switch (lecture_timings) {
-      case '8-1': // 8:00 AM - 1:00 PM
-        return timeIndex >= 0 && timeIndex <= 4; // Up to 12:55
-      case '10-4': // 10:00 AM - 4:00 PM  
-        return timeIndex >= 2 && timeIndex <= 7; // 10:05 to 15:55
-      case '1-4': // 1:00 PM - 4:00 PM
-        return timeIndex >= 5 && timeIndex <= 7; // 13:05 to 15:55
-      default:
-        return true;
-    }
-  }
-
-  checkSlotAvailability(sectionId: string, teacherId: string, slot: Slot, duration: number, roomType: 'lecture_hall' | 'computer_lab'): AvailabilityResult {
-    // Check if slot conflicts with section's lecture timing restrictions
-    const section = this.data.sections.find(s => s.id === sectionId);
-    if (section && section.lecture_timings) {
-      if (!this.isWithinLectureTimings(slot.time, section.lecture_timings, roomType)) {
-        return { available: false };
-      }
-    }
-
-    // Check section-specific break rules
-    const sectionBreakRule = this.data.rules.section_break_rules[sectionId];
-    if (sectionBreakRule?.hasBreak && sectionBreakRule.breakSlot === slot.time) {
+    const course = this.data.courses.find(c => c.id === session.courseId);
+    if (!course) {
+      console.log('Course not found');
       return { available: false };
     }
 
-    // Check if teacher is available
-    const teacher = this.data.teachers.find(t => t.id === teacherId);
-    if (!teacher || !teacher.available_days.includes(slot.day) || !teacher.available_slots.includes(slot.time)) {
-      return { available: false };
-    }
+    // Find suitable classrooms
+    const suitableClassrooms = this.data.classrooms.filter(classroom => {
+      // Check room type compatibility
+      if (classroom.type !== course.room_type) return false;
 
-    // Check for conflicts in consecutive slots for duration
-    for (let i = 0; i < duration; i++) {
-      const currentSlotIndex = slot.index + i;
-      const currentSlot = this.slots.find(s => s.index === currentSlotIndex);
-      
-      if (!currentSlot) return { available: false };
-
-      // Check section conflict
-      const sectionKey = this.getSlotKey(sectionId, currentSlot.day, currentSlot.time);
-      if (this.schedule.has(sectionKey)) {
-        return { available: false };
+      // Check capacity
+      let requiredCapacity = 0;
+      if (session.isGroupClass && session.groupSections) {
+        for (const sectionId of session.groupSections) {
+          const section = this.data.sections.find(s => s.id === sectionId);
+          if (section) requiredCapacity += section.student_count;
+        }
+      } else {
+        const section = this.data.sections.find(s => s.id === session.sectionId);
+        if (section) requiredCapacity = section.student_count;
       }
 
-      // Check teacher conflict
-      const teacherKey = this.getTeacherKey(teacherId, currentSlot.day, currentSlot.time);
-      const teacherConflict = Array.from(this.schedule.values()).find(entry => 
-        this.getTeacherKey(entry.teacher, entry.day, entry.time) === teacherKey
+      if (classroom.capacity < requiredCapacity) {
+        console.log(`Classroom ${classroom.name} capacity ${classroom.capacity} < required ${requiredCapacity}`);
+        return false;
+      }
+
+      // Check if classroom is available at this time
+      const roomKey = `room-${classroom.id}`;
+      const roomSchedule = schedule.get(roomKey) || [];
+      const roomConflict = roomSchedule.find(entry => 
+        entry.day === slot.day && entry.time === slot.time
       );
-      if (teacherConflict) {
-        return { available: false };
-      }
-    }
 
-    // Find available classroom
-    const availableClassroom = this.data.classrooms.find(classroom => {
-      if (classroom.type !== roomType) return false;
-      
-      // Check capacity for section
-      if (section && classroom.capacity < section.student_count) return false;
-      
-      for (let i = 0; i < duration; i++) {
-        const currentSlotIndex = slot.index + i;
-        const currentSlot = this.slots.find(s => s.index === currentSlotIndex);
-        
-        if (!currentSlot) return false;
-        
-        const roomKey = this.getRoomKey(classroom.id, currentSlot.day, currentSlot.time);
-        const roomConflict = Array.from(this.schedule.values()).find(entry => 
-          this.getRoomKey(entry.room, entry.day, entry.time) === roomKey
-        );
-        
-        if (roomConflict) return false;
-      }
-      
-      return true;
+      return !roomConflict;
     });
 
-    return { available: !!availableClassroom, classroom: availableClassroom };
+    if (suitableClassrooms.length === 0) {
+      console.log('No suitable classrooms available');
+      return { available: false };
+    }
+
+    // Sort by capacity (prefer smaller suitable rooms)
+    suitableClassrooms.sort((a, b) => a.capacity - b.capacity);
+
+    console.log(`Found ${suitableClassrooms.length} suitable classrooms, using ${suitableClassrooms[0].name}`);
+    return { 
+      available: true, 
+      classroom: suitableClassrooms[0] 
+    };
   }
 }
