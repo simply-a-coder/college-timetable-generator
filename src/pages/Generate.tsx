@@ -1,19 +1,17 @@
 
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Loader2, Play, RefreshCw } from 'lucide-react';
-import { generateTimetable } from '@/utils/scheduler';
-import { Section, Teacher, Course, GroupClass, Assignment, Rules, TimetableEntry, Classroom } from '@/types';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Calendar, Users, BookOpen, MapPin, Play, Download, AlertCircle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { generateTimetable } from '@/utils/scheduler';
 import StatsCards from '@/components/generate/StatsCards';
 import ConstraintInfo from '@/components/generate/ConstraintInfo';
 import TimetableDisplay from '@/components/generate/TimetableDisplay';
+import type { TimetableEntry } from '@/types';
 
 const Generate: React.FC = () => {
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [isLoadingStats, setIsLoadingStats] = useState(false);
-  const [timetable, setTimetable] = useState<TimetableEntry[]>([]);
   const [currentProgram, setCurrentProgram] = useState<any>(null);
   const [stats, setStats] = useState({
     sections: 0,
@@ -22,6 +20,9 @@ const Generate: React.FC = () => {
     assignments: 0,
     classrooms: 0
   });
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [timetable, setTimetable] = useState<TimetableEntry[]>([]);
+  const [generationInfo, setGenerationInfo] = useState<string>('');
 
   useEffect(() => {
     const savedProgram = localStorage.getItem('selectedProgram');
@@ -29,165 +30,122 @@ const Generate: React.FC = () => {
       const program = JSON.parse(savedProgram);
       setCurrentProgram(program);
       loadStats(program.id);
-      loadExistingTimetable(program.id);
     }
   }, []);
 
   const loadStats = async (programId: string) => {
-    setIsLoadingStats(true);
     try {
-      console.log('Loading fresh stats for program:', programId);
+      console.log('Loading stats for program:', programId);
       
-      const [sectionsRes, teachersRes, coursesRes, groupsRes, assignmentsRes, rulesRes, classroomsRes] = await Promise.all([
+      // Load all data with proper error handling
+      const [sectionsRes, teachersRes, coursesRes, classroomsRes, assignmentsRes] = await Promise.all([
         supabase.from('sections').select('*').eq('program_id', programId),
         supabase.from('teachers').select('*').eq('program_id', programId),
         supabase.from('courses').select('*').eq('program_id', programId),
-        supabase.from('groups').select('*').eq('program_id', programId),
-        supabase.from('assignments').select('*').eq('program_id', programId),
-        supabase.from('rules').select('*').eq('program_id', programId),
-        supabase.from('classrooms').select('*').eq('program_id', programId)
+        supabase.from('classrooms').select('*').eq('program_id', programId),
+        supabase.from('assignments').select('*').eq('program_id', programId)
       ]);
+
+      // Check for errors
+      if (sectionsRes.error) throw sectionsRes.error;
+      if (teachersRes.error) throw teachersRes.error;
+      if (coursesRes.error) throw coursesRes.error;
+      if (classroomsRes.error) throw classroomsRes.error;
+      if (assignmentsRes.error) throw assignmentsRes.error;
 
       const newStats = {
         sections: sectionsRes.data?.length || 0,
         teachers: teachersRes.data?.length || 0,
         courses: coursesRes.data?.length || 0,
-        assignments: assignmentsRes.data?.length || 0,
-        classrooms: classroomsRes.data?.length || 0
+        classrooms: classroomsRes.data?.length || 0,
+        assignments: assignmentsRes.data?.length || 0
       };
 
-      console.log('Updated stats:', newStats);
+      console.log('Loaded stats:', newStats);
       setStats(newStats);
     } catch (error) {
       console.error('Error loading stats:', error);
       toast({
         title: "Error",
-        description: "Failed to load statistics.",
+        description: "Failed to load program statistics.",
         variant: "destructive"
       });
-    } finally {
-      setIsLoadingStats(false);
     }
   };
 
-  const loadExistingTimetable = async (programId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('timetable_entries')
-        .select('*')
-        .eq('program_id', programId);
-
-      if (error) throw error;
-      setTimetable(data || []);
-    } catch (error) {
-      console.error('Error loading existing timetable:', error);
-    }
-  };
-
-  const refreshStats = () => {
-    if (currentProgram) {
-      loadStats(currentProgram.id);
-    }
-  };
-
-  const handleGenerate = async () => {
-    if (!currentProgram) return;
-
-    setIsGenerating(true);
-    try {
-      console.log('Starting timetable generation...');
-      
-      const [sectionsRes, teachersRes, coursesRes, groupsRes, assignmentsRes, rulesRes, classroomsRes] = await Promise.all([
-        supabase.from('sections').select('*').eq('program_id', currentProgram.id),
-        supabase.from('teachers').select('*').eq('program_id', currentProgram.id),
-        supabase.from('courses').select('*').eq('program_id', currentProgram.id),
-        supabase.from('groups').select('*').eq('program_id', currentProgram.id),
-        supabase.from('assignments').select('*').eq('program_id', currentProgram.id),
-        supabase.from('rules').select('*').eq('program_id', currentProgram.id),
-        supabase.from('classrooms').select('*').eq('program_id', currentProgram.id)
-      ]);
-
-      const sections = sectionsRes.data || [];
-      const teachers = teachersRes.data || [];
-      const courses = coursesRes.data || [];
-      const groups = groupsRes.data || [];
-      const assignments = assignmentsRes.data || [];
-      const classrooms = classroomsRes.data || [];
-      const rulesData = rulesRes.data?.[0];
-
-      console.log('Loaded data:', {
-        sections: sections.length,
-        teachers: teachers.length,
-        courses: courses.length,
-        assignments: assignments.length,
-        classrooms: classrooms.length,
-        rules: !!rulesData
-      });
-
-      if (!rulesData) {
-        toast({
-          title: "Error",
-          description: "Please configure rules before generating timetable.",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      if (sections.length === 0 || teachers.length === 0 || courses.length === 0 || classrooms.length === 0) {
-        toast({
-          title: "Error",
-          description: "Please add sections, teachers, courses, and classrooms before generating timetable.",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      console.log('Clearing existing timetable entries...');
-      await supabase.from('timetable_entries').delete().eq('program_id', currentProgram.id);
-
-      const result = await generateTimetable(
-        sections as Section[],
-        teachers as Teacher[],
-        courses as Course[],
-        groups as GroupClass[],
-        assignments as Assignment[],
-        rulesData as Rules,
-        classrooms as Classroom[]
-      );
-
-      console.log(`Generated ${result.length} timetable entries`);
-      setTimetable(result);
-
-      if (result.length > 0) {
-        const entries = result.map(entry => ({
-          ...entry,
-          program_id: currentProgram.id
-        }));
-        
-        const { error: insertError } = await supabase
-          .from('timetable_entries')
-          .insert(entries);
-
-        if (insertError) {
-          console.error('Error saving timetable:', insertError);
-          throw insertError;
-        }
-      }
-
-      toast({
-        title: "Success", 
-        description: `Generated timetable with ${result.length} scheduled sessions following all constraints!`,
-      });
-    } catch (error) {
-      console.error('Error generating timetable:', error);
+  const handleGenerateTimetable = async () => {
+    if (!currentProgram) {
       toast({
         title: "Error",
-        description: "Failed to generate timetable.",
+        description: "Please select a program first.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsGenerating(true);
+    setGenerationInfo('Starting timetable generation...');
+
+    try {
+      const result = await generateTimetable(currentProgram.id);
+      
+      if (result.success) {
+        setTimetable(result.timetable || []);
+        setGenerationInfo(result.info || 'Timetable generated successfully!');
+        toast({
+          title: "Success",
+          description: "Timetable generated successfully!",
+        });
+      } else {
+        setGenerationInfo(result.info || 'Failed to generate timetable');
+        toast({
+          title: "Generation Failed",
+          description: result.info || "Failed to generate timetable. Please check your constraints and data.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Error generating timetable:', error);
+      setGenerationInfo('Error during generation: ' + (error as Error).message);
+      toast({
+        title: "Error",
+        description: "An error occurred during timetable generation.",
         variant: "destructive"
       });
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const downloadTimetable = () => {
+    if (timetable.length === 0) {
+      toast({
+        title: "No Data",
+        description: "No timetable data to download.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const csv = [
+      ['Day', 'Time', 'Section', 'Course', 'Teacher', 'Room'].join(','),
+      ...timetable.map(entry => [
+        entry.day,
+        entry.time,
+        entry.section,
+        entry.course,
+        entry.teacher,
+        entry.room
+      ].join(','))
+    ].join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `timetable-${currentProgram?.name || 'program'}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
   };
 
   if (!currentProgram) {
@@ -198,60 +156,81 @@ const Generate: React.FC = () => {
     );
   }
 
+  const canGenerate = stats.sections > 0 && stats.teachers > 0 && stats.courses > 0 && stats.classrooms > 0 && stats.assignments > 0;
+
   return (
     <div className="space-y-8">
       <div className="text-center">
         <h2 className="text-3xl font-bold text-slate-800 mb-4">Generate Timetable</h2>
-        <p className="text-slate-600">Create an optimized schedule for {currentProgram.name}</p>
+        <p className="text-slate-600">AI-powered timetable generation for {currentProgram.name}</p>
       </div>
 
       <StatsCards stats={stats} />
 
-      <div className="text-center space-y-4">
-        <div className="flex justify-center gap-4">
+      <ConstraintInfo />
+
+      {!canGenerate && (
+        <Card className="border-orange-200 bg-orange-50">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3 text-orange-800">
+              <AlertCircle className="w-5 h-5" />
+              <div>
+                <p className="font-medium">Setup Required</p>
+                <p className="text-sm text-orange-700">
+                  Please ensure you have added at least one entry in each category: sections, teachers, courses, classrooms, and assignments.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="flex justify-center gap-4">
+        <Button 
+          onClick={handleGenerateTimetable}
+          disabled={isGenerating || !canGenerate}
+          size="lg"
+          className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+        >
+          {isGenerating ? (
+            <>
+              <div className="animate-spin w-5 h-5 mr-2 border-2 border-white border-t-transparent rounded-full"></div>
+              Generating...
+            </>
+          ) : (
+            <>
+              <Play className="w-5 h-5 mr-2" />
+              Generate Timetable
+            </>
+          )}
+        </Button>
+        
+        {timetable.length > 0 && (
           <Button 
-            onClick={refreshStats}
-            disabled={isLoadingStats}
+            onClick={downloadTimetable}
             variant="outline"
             size="lg"
           >
-            {isLoadingStats ? (
-              <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-            ) : (
-              <RefreshCw className="w-5 h-5 mr-2" />
-            )}
-            Refresh Stats
+            <Download className="w-5 h-5 mr-2" />
+            Download CSV
           </Button>
-          
-          <Button 
-            onClick={handleGenerate}
-            disabled={isGenerating || stats.sections === 0 || stats.teachers === 0 || stats.courses === 0 || stats.classrooms === 0}
-            size="lg"
-            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-          >
-            {isGenerating ? (
-              <>
-                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                Generating...
-              </>
-            ) : (
-              <>
-                <Play className="w-5 h-5 mr-2" />
-                Generate Timetable
-              </>
-            )}
-          </Button>
-        </div>
-
-        {(stats.sections === 0 || stats.teachers === 0 || stats.courses === 0 || stats.classrooms === 0) && (
-          <p className="text-sm text-orange-600">
-            Please add sections, teachers, courses, and classrooms before generating the timetable.
-          </p>
         )}
       </div>
 
-      <ConstraintInfo />
-      <TimetableDisplay timetable={timetable} />
+      {generationInfo && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Generation Status</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-slate-600">{generationInfo}</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {timetable.length > 0 && (
+        <TimetableDisplay timetable={timetable} />
+      )}
     </div>
   );
 };
